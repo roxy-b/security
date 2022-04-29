@@ -6,6 +6,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.work.WorkManager;
 
 import android.Manifest;
@@ -27,6 +29,9 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
 
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -51,6 +56,7 @@ import retrofit2.Response;
 public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_CHECK_SETTINGS = 101;
     private static final String TAG = "MainActivity";
+    private static final String CHANNEL_ID = "Restricted";
     private String requestState = "";
     private TextView textView;
     private FusedLocationProviderClient fusedLocationClient;    //api client for last location and callback updates
@@ -58,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private LocationCallback locationCallback;
     @SuppressLint("SimpleDateFormat")
     private final SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss");
+    private static final int notificationId = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +84,9 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         if (isPermissionApproved())
         startLocationUpdates();
+        /*should execute this code as soon as your app starts. It's safe to call this repeatedly
+        because creating an existing notification channel performs no operation.*/
+        createNotificationChannel();
     }
 
     private boolean isPermissionApproved(){
@@ -260,6 +270,8 @@ public class MainActivity extends AppCompatActivity {
                 if (response.body() != null) {
                     showToast(response.body().Reply);
                     Log.d(TAG, "Api onResponse".concat(response.body().Reply));
+                    //todo lauch notification
+                    launchNotification();
 
                 }
 
@@ -272,6 +284,42 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
+    }
+
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = getString(R.string.channel_description);
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private void launchNotification() {
+        // Create an explicit intent for an Activity in your app
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_background)
+                .setContentTitle("Security Breach")
+                .setContentText("You are in a restricted area")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        // Set the intent that will fire when the user taps the notification
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(false);
+
+        //Show Notification
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+        //notificationId is a unique int for each notification that you must define
+        notificationManager.notify(notificationId, builder.build());
     }
 
     private void showToast(String message) {

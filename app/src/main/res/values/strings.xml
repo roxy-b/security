@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">GPS Coordinates</string>
+    <string name="channel_name">Restricted</string>
+    <string name="channel_description">Restricted Area Notification</string>
 </resources>
